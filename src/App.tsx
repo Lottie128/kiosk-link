@@ -6,8 +6,8 @@ function App() {
   return (
     <Router>
       <Routes>
-        <Route path="/kiosk" element={<KioskView />} />
-        <Route path="/" element={<MobileView />} />
+        <Route path="/" element={<KioskView />} />
+        <Route path="/remote" element={<MobileView />} />
       </Routes>
     </Router>
   );

@@ -13,8 +13,8 @@ const KioskView: React.FC = () => {
     photo: "https://api.dicebear.com/7.x/avataaars/svg?seed=Aryan"
   });
 
-  // Get current URL for QR code (points to the mobile view)
-  const mobileUrl = window.location.origin;
+  // Get current URL for QR code (points to the mobile view /remote)
+  const mobileUrl = `${window.location.origin}/remote`;
 
   useEffect(() => {
     if (!isSupabaseConfigured) return;
