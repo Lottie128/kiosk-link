@@ -6,8 +6,8 @@ import { AlertTriangle } from 'lucide-react';
 const KioskView: React.FC = () => {
   const [currentMessage, setCurrentMessage] = useState<string | null>(null);
   const [isThinking, setIsThinking] = useState(false);
-  const [adminName, setAdminName] = useState<string | null>(null);
-  const [master, setMaster] = useState<{name: string, class: string, photo: string} | null>({
+  const [, setAdminName] = useState<string | null>(null);
+  const [master] = useState<{name: string, class: string, photo: string} | null>({
     name: "Aryan Sharma",
     class: "8-A",
     photo: "https://api.dicebear.com/7.x/avataaars/svg?seed=Aryan"
@@ -18,7 +18,25 @@ const KioskView: React.FC = () => {
 
   useEffect(() => {
     if (!isSupabaseConfigured) return;
-    // ... (supabase subscription code remains the same)
+
+    const channel = supabase
+      .channel('kiosk-state')
+      .on('broadcast', { event: 'ai-response' }, (payload: any) => {
+        setCurrentMessage(payload.text);
+        setAdminName(payload.adminName);
+        setIsThinking(false);
+        
+        // Clear message after 8 seconds
+        setTimeout(() => setCurrentMessage(null), 8000);
+      })
+      .on('broadcast', { event: 'admin-speaking' }, () => {
+        setIsThinking(true);
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   return (
@@ -152,4 +170,3 @@ const KioskView: React.FC = () => {
 };
 
 export default KioskView;
-

@@ -1,11 +1,10 @@
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MessageSquare, Trophy, Settings, Send, Mic, Volume2 } from 'lucide-react';
+import { Settings, Send, Mic, Volume2 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { chatWithAI } from '../lib/ai';
 
 const MobileView: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'chat' | 'challenge' | 'profile'>('chat');
   const [message, setMessage] = useState('');
   const [isRecording, setIsRecording] = useState(false);
   const [isAiProcessing, setIsAiProcessing] = useState(false);
@@ -177,4 +176,3 @@ const MobileView: React.FC = () => {
 };
 
 export default MobileView;
-
