@@ -22,7 +22,7 @@ const KioskView: React.FC = () => {
   }, []);
 
   return (
-    <div className="kiosk-container overflow-hidden text-white font-sans flex flex-col items-center justify-between relative py-20">
+    <div className="kiosk-container overflow-hidden text-white font-sans flex flex-col items-center relative h-screen w-screen px-6 py-12 md:py-16">
       
       {/* Background Ambient Glow */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
@@ -33,61 +33,58 @@ const KioskView: React.FC = () => {
         />
       </div>
 
-      {/* TOP: Wall of Fame / Master of the Day */}
+      {/* 1. TOP SECTION: Wall of Fame */}
       <motion.section 
-        initial={{ y: -50, opacity: 0 }}
+        initial={{ y: -30, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
-        className="relative z-20 w-full px-10"
+        className="relative z-20 w-full max-w-sm flex-shrink-0"
       >
         <div className="flex flex-col items-center">
-          <div className="bg-white/5 border border-white/10 backdrop-blur-xl rounded-3xl p-6 w-full max-w-sm flex items-center gap-6 glow-border">
-             <div className="relative">
-                <img src={master?.photo} className="w-20 h-20 rounded-2xl border-2 border-yellow-500 shadow-[0_0_20px_rgba(234,179,8,0.3)]" alt="Master" />
-                <div className="absolute -top-3 -right-3 bg-yellow-500 p-1.5 rounded-lg">
-                  <span className="text-[10px] font-black text-slate-900 uppercase">Master</span>
+          <div className="bg-slate-900/40 border border-white/10 backdrop-blur-xl rounded-[2rem] p-5 w-full flex items-center gap-5 glow-border">
+             <div className="relative flex-shrink-0">
+                <img src={master?.photo} className="w-16 h-16 rounded-2xl border-2 border-yellow-500 shadow-[0_0_15px_rgba(234,179,8,0.3)]" alt="Master" />
+                <div className="absolute -top-2 -right-2 bg-yellow-500 p-1 rounded-lg">
+                  <span className="text-[8px] font-black text-slate-900 uppercase">Master</span>
                 </div>
              </div>
-             <div>
-                <h3 className="text-xl font-black tracking-tight">{master?.name}</h3>
-                <p className="text-yellow-500/80 text-xs font-bold uppercase tracking-widest">Class {master?.class} • STEM Prodigy</p>
-                <div className="mt-2 flex gap-1">
-                   {[...Array(5)].map((_, i) => <div key={i} className="w-1.5 h-1.5 bg-yellow-500/40 rounded-full" />)}
-                </div>
+             <div className="min-w-0">
+                <h3 className="text-lg font-black tracking-tight truncate">{master?.name}</h3>
+                <p className="text-yellow-500/80 text-[10px] font-bold uppercase tracking-widest">Class {master?.class} • STEM Prodigy</p>
              </div>
           </div>
-          <p className="mt-4 text-[10px] uppercase tracking-[0.4em] text-slate-500 font-bold">Wall of Fame</p>
+          <p className="mt-3 text-[9px] uppercase tracking-[0.4em] text-slate-500 font-bold">Wall of Fame</p>
         </div>
       </motion.section>
 
-      {/* CENTER: The Living AI Orb */}
-      <main className="relative z-10 flex flex-col items-center justify-center">
-        <div className="relative w-96 h-96 flex items-center justify-center">
+      {/* 2. CENTER SECTION: The Living AI Orb (Expands to fill space) */}
+      <main className="relative z-10 flex-1 flex flex-col items-center justify-center w-full min-h-0 py-8">
+        <div className="relative w-full aspect-square max-w-[320px] max-h-[320px] flex items-center justify-center">
           {[...Array(3)].map((_, i) => (
             <motion.div
               key={i}
               animate={{ 
-                scale: isThinking ? [1, 1.4, 1] : [1, 1.2, 1],
-                opacity: [0.1, 0.3, 0.1],
+                scale: isThinking ? [1, 1.3, 1] : [1, 1.15, 1],
+                opacity: [0.1, 0.25, 0.1],
                 rotate: i * 120 + (isThinking ? 360 : 0)
               }}
               transition={{ duration: isThinking ? 2 : 6, repeat: Infinity, ease: "linear" }}
-              className="absolute inset-0 border border-stem-light/30 rounded-[35%] blur-[1px]"
+              className="absolute inset-0 border border-stem-light/20 rounded-[35%] blur-[1px]"
             />
           ))}
 
           <motion.div 
             animate={{ 
               scale: isThinking ? [1, 1.05, 1] : 1,
-              boxShadow: isThinking ? "0 0 120px rgba(0,242,254,0.5)" : "0 0 80px rgba(123,97,255,0.2)"
+              boxShadow: isThinking ? "0 0 100px rgba(0,242,254,0.4)" : "0 0 60px rgba(123,97,255,0.15)"
             }}
-            className="w-56 h-56 bg-gradient-to-br from-stem-light via-stem-accent to-purple-600 rounded-full flex items-center justify-center relative overflow-hidden group"
+            className="w-40 h-40 sm:w-48 sm:h-48 bg-gradient-to-br from-stem-light via-stem-accent to-purple-600 rounded-full flex items-center justify-center relative overflow-hidden"
           >
             <motion.div 
               animate={{ rotate: 360 }}
               transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
-              className="absolute inset-0 opacity-30 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')]"
+              className="absolute inset-0 opacity-20 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')]"
             />
-            <span className="text-7xl filter drop-shadow-2xl">⚡</span>
+            <span className="text-5xl sm:text-6xl filter drop-shadow-2xl">⚡</span>
           </motion.div>
         </div>
         
@@ -97,20 +94,20 @@ const KioskView: React.FC = () => {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="mt-8 text-center"
+              className="mt-6 text-center"
             >
-              <h2 className="text-2xl font-black tracking-tighter uppercase text-stem-light">AI Brain Active</h2>
-              <p className="text-[10px] tracking-[0.3em] text-slate-500 mt-2">DRISHTI RC JAIN STEM LAB</p>
+              <h2 className="text-xl font-black tracking-tighter uppercase text-stem-light">AI Brain Active</h2>
+              <p className="text-[9px] tracking-[0.3em] text-slate-500 mt-1 uppercase">Drishti RC Jain STEM Lab</p>
             </motion.div>
           )}
         </AnimatePresence>
       </main>
 
-      {/* BOTTOM: Message Display & QR Code */}
-      <footer className="relative z-20 w-full flex flex-col items-center">
+      {/* 3. BOTTOM SECTION: Messages & QR */}
+      <footer className="relative z-20 w-full flex flex-col items-center flex-shrink-0">
         
-        {/* Cinematic Subtitles */}
-        <div className="min-h-[120px] px-12 text-center mb-12">
+        {/* Cinematic Subtitles (Fixed height to prevent jumping) */}
+        <div className="h-[80px] sm:h-[100px] flex items-center justify-center px-6 text-center mb-6 overflow-hidden">
           <AnimatePresence mode="wait">
             {currentMessage && (
               <motion.h2 
@@ -118,7 +115,7 @@ const KioskView: React.FC = () => {
                 initial={{ y: 20, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
                 exit={{ y: -20, opacity: 0 }}
-                className="text-4xl font-black leading-tight glow-text text-white"
+                className="text-2xl sm:text-3xl font-black leading-tight glow-text text-white line-clamp-2"
               >
                 {currentMessage}
               </motion.h2>
@@ -126,18 +123,19 @@ const KioskView: React.FC = () => {
           </AnimatePresence>
         </div>
 
-        {/* QR Code Container */}
-        <div className="flex flex-col items-center bg-slate-900/40 backdrop-blur-xl border border-white/5 p-6 rounded-[2.5rem]">
-           <div className="bg-white p-3 rounded-2xl shadow-[0_0_30px_rgba(255,255,255,0.1)]">
+        {/* QR Code Container (Scaled down for responsiveness) */}
+        <div className="flex flex-col items-center bg-slate-900/40 backdrop-blur-xl border border-white/5 p-4 sm:p-5 rounded-[2rem]">
+           <div className="bg-white p-2 rounded-xl">
               <img 
-                src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(mobileUrl)}&bgcolor=ffffff&color=0f172a&margin=10`} 
+                src={`https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(mobileUrl)}&bgcolor=ffffff&color=0f172a&margin=8`} 
                 alt="QR Code"
-                className="w-32 h-32"
+                className="w-24 h-24 sm:w-28 sm:h-28"
               />
            </div>
-           <p className="mt-4 text-[10px] font-bold uppercase tracking-[0.2em] text-stem-light">Scan to Connect</p>
+           <p className="mt-3 text-[8px] font-bold uppercase tracking-[0.2em] text-stem-light">Scan to Connect</p>
         </div>
       </footer>
+
 
       {/* Configuration Warning */}
       {!isSupabaseConfigured && (
