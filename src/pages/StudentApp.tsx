@@ -59,6 +59,16 @@ export default function StudentApp() {
         </AnimatePresence>
       </main>
 
+      {/* ZeroAI branding strip */}
+      <div className="flex-shrink-0 flex items-center justify-center py-1 bg-slate-900/50 border-t border-white/5">
+        <p className="text-[9px] text-slate-700 uppercase tracking-[0.2em]">
+          ZeroAI{' '}
+          <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-600 to-purple-600 font-bold">
+            Technologies Inc
+          </span>
+        </p>
+      </div>
+
       {/* Bottom navigation */}
       <nav className="flex-shrink-0 border-t border-white/5 bg-slate-900/90 backdrop-blur-xl">
         <div className="flex">

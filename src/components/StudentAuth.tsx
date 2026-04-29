@@ -141,6 +141,13 @@ export default function StudentAuth() {
         <p className="text-center text-slate-600 text-xs mt-6">
           Class {classNum}-{section} • {classNum <= 4 ? 'Junior' : classNum <= 7 ? 'Middle' : 'Senior'} STEM
         </p>
+
+        <p className="text-center text-[10px] text-slate-700 mt-3 uppercase tracking-[0.2em]">
+          A product by{' '}
+          <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-600 to-purple-600 font-bold">
+            ZeroAI Technologies Inc
+          </span>
+        </p>
       </motion.div>
     </div>
   )

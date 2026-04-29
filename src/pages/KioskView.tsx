@@ -290,7 +290,7 @@ export default function KioskView() {
       </section>
 
       {/* ── SECTION 5: QR Code ── */}
-      <section className="kiosk-section-qr px-8 pb-8 flex flex-col items-center">
+      <section className="kiosk-section-qr px-8 flex flex-col items-center">
         <div className="flex items-center gap-5 bg-slate-900/60 border border-white/10 backdrop-blur-xl rounded-2xl p-4 w-full">
           <div className="bg-white p-2.5 rounded-xl flex-shrink-0">
             <img
@@ -310,6 +310,18 @@ export default function KioskView() {
           </div>
         </div>
       </section>
+
+      {/* ── ZeroAI branding ── */}
+      <div className="flex-shrink-0 flex items-center justify-center gap-2 py-3 px-8">
+        <div className="h-px flex-1 bg-white/5" />
+        <p className="text-[9px] text-slate-600 font-bold uppercase tracking-[0.25em] whitespace-nowrap">
+          A product by{' '}
+          <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-500 to-purple-500">
+            ZeroAI Technologies Inc
+          </span>
+        </p>
+        <div className="h-px flex-1 bg-white/5" />
+      </div>
     </div>
   )
 }
