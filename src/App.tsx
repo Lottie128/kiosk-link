@@ -13,8 +13,8 @@ export default function App() {
   return (
     <Router>
       <Routes>
-        <Route path="/" element={<StudentRoot />} />
-        <Route path="/kiosk" element={<KioskView />} />
+        <Route path="/" element={<KioskView />} />
+        <Route path="/join" element={<StudentRoot />} />
       </Routes>
     </Router>
   )

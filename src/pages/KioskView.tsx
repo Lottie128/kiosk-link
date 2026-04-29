@@ -7,7 +7,7 @@ import { getDailyFallbackQuestion } from '../lib/questions'
 interface KioskMessage { text: string; studentName: string }
 
 const KIOSK_URL = typeof window !== 'undefined'
-  ? `${window.location.origin}/`
+  ? `${window.location.origin}/join`
   : ''
 
 export default function KioskView() {
