@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { getTodayMaster, getTodayQuestion, isSupabaseConfigured, supabase } from '../lib/supabase'
-import type { MasterOfDay } from '../lib/supabase'
+import type { KioskMaster } from '../lib/supabase'
 import { getDailyFallbackQuestion } from '../lib/questions'
 
 interface KioskMessage { text: string; studentName: string }
@@ -11,7 +11,7 @@ const KIOSK_URL = typeof window !== 'undefined'
   : ''
 
 export default function KioskView() {
-  const [master, setMaster] = useState<MasterOfDay | null>(null)
+  const [master, setMaster] = useState<KioskMaster | null>(null)
   const [question, setQuestion] = useState<string | null>(null)
   const [kioskMsg, setKioskMsg] = useState<KioskMessage | null>(null)
   const [orbActive, setOrbActive] = useState(false)
@@ -48,7 +48,7 @@ export default function KioskView() {
     const ch = supabase
       .channel('public:master_of_day')
       .on('postgres_changes', {
-        event: 'INSERT', schema: 'public', table: 'master_of_day',
+        event: 'INSERT', schema: 'public', table: 'kiosk_master_of_day',
       }, async () => {
         const m = await getTodayMaster()
         setMaster(m)
@@ -71,10 +71,9 @@ export default function KioskView() {
     return () => { supabase.removeChannel(ch) }
   }, [])
 
-  const masterStudent = master?.students
-  const masterPhoto = masterStudent?.photo_url
-    ?? (masterStudent
-      ? `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(masterStudent.name)}`
+  const masterPhoto = master?.photo_url
+    ?? (master
+      ? `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(master.display_name)}`
       : null)
 
   const timeStr = time.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })
@@ -142,9 +141,9 @@ export default function KioskView() {
           🏆 Master of the Day
         </p>
 
-        {masterStudent ? (
+        {master ? (
           <motion.div
-            key={masterStudent.id}
+            key={master.id}
             initial={{ scale: 0.9, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             className="master-card"
@@ -152,16 +151,16 @@ export default function KioskView() {
             <div className="master-photo-ring">
               <img
                 src={masterPhoto!}
-                alt={masterStudent.name}
+                alt={master.display_name}
                 className="w-full h-full object-cover rounded-full"
               />
             </div>
             <div className="min-w-0">
               <h2 className="text-white font-black text-xl truncate leading-tight">
-                {masterStudent.name}
+                {master.display_name}
               </h2>
               <p className="text-yellow-400 text-xs font-bold uppercase tracking-widest">
-                Class {masterStudent.class_num}-{masterStudent.section}
+                {master.class_name}
               </p>
               <p className="text-slate-500 text-[10px] uppercase tracking-widest mt-0.5">
                 STEM Prodigy
