@@ -10,16 +10,18 @@ export default function StudentAuth() {
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<KioskStudent[]>([])
   const [loading, setLoading] = useState(false)
+  const [searchError, setSearchError] = useState<string | null>(null)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current)
-    if (query.trim().length < 2) { setResults([]); return }
+    if (query.trim().length < 2) { setResults([]); setSearchError(null); return }
 
     debounceRef.current = setTimeout(async () => {
       setLoading(true)
-      const found = await searchStudents(query)
+      const { students: found, error } = await searchStudents(query)
       setResults(found)
+      setSearchError(error)
       setLoading(false)
     }, 300)
 
@@ -115,7 +117,22 @@ export default function StudentAuth() {
               </motion.div>
             )}
 
-            {query.length >= 2 && !loading && results.length === 0 && (
+            {query.length >= 2 && !loading && searchError && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="mt-3 p-3 rounded-xl bg-yellow-500/10 border border-yellow-500/20"
+              >
+                <p className="text-yellow-400 text-xs font-bold mb-1">Database setup needed</p>
+                <p className="text-yellow-400/70 text-[11px] leading-relaxed">
+                  Run <code className="bg-slate-800 px-1 rounded">kiosk-link-schema.sql</code> in
+                  your Supabase SQL editor to enable student search.
+                </p>
+                <p className="text-slate-600 text-[10px] mt-1.5 font-mono">{searchError}</p>
+              </motion.div>
+            )}
+
+            {query.length >= 2 && !loading && !searchError && results.length === 0 && (
               <motion.p
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}

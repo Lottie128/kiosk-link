@@ -52,11 +52,16 @@ export function getGradeGroupFromClassName(
 
 // ── Student lookup (reads ZaiPy's shared students table via safe RPC) ─────────
 
-export async function searchStudents(query: string): Promise<KioskStudent[]> {
-  if (!isSupabaseConfigured || query.trim().length < 2) return []
+export async function searchStudents(
+  query: string,
+): Promise<{ students: KioskStudent[]; error: string | null }> {
+  if (!isSupabaseConfigured || query.trim().length < 2) return { students: [], error: null }
   const { data, error } = await supabase.rpc('kiosk_find_students', { p_query: query.trim() })
-  if (error) { console.error('kiosk_find_students:', error); return [] }
-  return (data ?? []) as KioskStudent[]
+  if (error) {
+    console.error('kiosk_find_students:', error)
+    return { students: [], error: error.message }
+  }
+  return { students: (data ?? []) as KioskStudent[], error: null }
 }
 
 // ── Photo upload (kiosk-photos bucket in shared project) ─────────────────────
