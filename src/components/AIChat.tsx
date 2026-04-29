@@ -50,10 +50,13 @@ export default function AIChat() {
     setTranscript('')
     setIsThinking(true)
 
+    const gradeMatch = student?.class_name?.match(/\b(\d+)\b/)
+    const classNum = gradeMatch ? parseInt(gradeMatch[1]) : undefined
+
     const response = await chatWithAI(
       updatedHistory,
-      student?.name,
-      student?.class_num,
+      student?.display_name,
+      classNum,
     )
 
     const aiMsg: ChatMessage = { role: 'assistant', content: response }
@@ -65,7 +68,7 @@ export default function AIChat() {
       supabase.channel('kiosk-live').send({
         type: 'broadcast',
         event: 'ai-response',
-        payload: { text: response, studentName: student?.name ?? 'Student' },
+        payload: { text: response, studentName: student?.display_name ?? 'Student' },
       })
     }
 
@@ -125,7 +128,7 @@ export default function AIChat() {
             <div className="w-16 h-16 rounded-full bg-gradient-to-br from-cyan-400 to-purple-600 flex items-center justify-center mb-4 shadow-lg shadow-cyan-500/20">
               <Bot className="w-9 h-9 text-white" />
             </div>
-            <h3 className="text-white font-black text-lg">Hello{student ? `, ${student.name.split(' ')[0]}` : ''}! 👋</h3>
+            <h3 className="text-white font-black text-lg">Hello{student ? `, ${student.display_name.split(' ')[0]}` : ''}! 👋</h3>
             <p className="text-slate-500 text-sm mt-2 max-w-xs">
               I'm ARIA, your STEM Lab AI. Ask me anything about science, technology, maths, or engineering!
             </p>

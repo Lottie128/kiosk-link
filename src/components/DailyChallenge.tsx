@@ -3,8 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Trophy, Lightbulb, Send, CheckCircle, XCircle, Crown } from 'lucide-react'
 import { useAuthStore } from '../store/authStore'
 import {
-  getTodayQuestion, submitAnswer, getGradeGroup,
-  isSupabaseConfigured,
+  getTodayQuestion, submitAnswer, getGradeGroupFromClassName, isSupabaseConfigured,
 } from '../lib/supabase'
 import type { DailyQuestion } from '../lib/supabase'
 import { getDailyFallbackQuestion } from '../lib/questions'
@@ -20,7 +19,9 @@ export default function DailyChallenge() {
   const [showHint, setShowHint] = useState(false)
   const [loading, setLoading] = useState(true)
 
-  const gradeGroup = student ? getGradeGroup(student.class_num) : 'middle'
+  const gradeGroup = student
+    ? getGradeGroupFromClassName(student.class_name)
+    : 'middle'
 
   useEffect(() => {
     async function load() {
@@ -29,7 +30,6 @@ export default function DailyChallenge() {
         const q = await getTodayQuestion(gradeGroup)
         if (q) { setQuestion(q); setLoading(false); return }
       }
-      // Fall back to static bank
       setFallback(getDailyFallbackQuestion(gradeGroup))
       setLoading(false)
     }
@@ -41,13 +41,14 @@ export default function DailyChallenge() {
     if (!answer.trim() || !student) return
 
     if (question) {
-      // Live Supabase mode
-      const result = await submitAnswer(student.id, question.id, answer, question.correct_answer)
+      const result = await submitAnswer(
+        student.id, question.id, answer, question.correct_answer,
+        student.display_name, student.class_name, student.photo_url,
+      )
       if (result.alreadyAnswered) { setAnswerState('already'); return }
       if (result.isMaster) { setAnswerState('master'); return }
       setAnswerState(result.correct ? 'correct' : 'wrong')
     } else if (fallback) {
-      // Offline fallback mode
       const correct = answer.trim().toLowerCase().includes(fallback.answer.toLowerCase())
       setAnswerState(correct ? 'correct' : 'wrong')
     }
@@ -58,16 +59,13 @@ export default function DailyChallenge() {
 
   return (
     <div className="p-4 space-y-4 pb-8">
-      {/* Header */}
       <div className="flex items-center gap-3 mb-6">
         <div className="w-10 h-10 rounded-2xl bg-yellow-500/20 flex items-center justify-center">
           <Trophy className="w-6 h-6 text-yellow-400" />
         </div>
         <div>
           <h2 className="font-black text-white text-lg leading-none">Today's Challenge</h2>
-          <p className="text-slate-500 text-xs mt-0.5">
-            First correct answer = Master of the Day!
-          </p>
+          <p className="text-slate-500 text-xs mt-0.5">First correct answer = Master of the Day!</p>
         </div>
       </div>
 
@@ -78,7 +76,7 @@ export default function DailyChallenge() {
       ) : (
         <AnimatePresence mode="wait">
           {answerState === 'master' ? (
-            <MasterCelebration studentName={student?.name ?? 'You'} />
+            <MasterCelebration studentName={student?.display_name ?? 'You'} />
           ) : answerState === 'correct' ? (
             <CorrectAnswer />
           ) : (
@@ -88,24 +86,18 @@ export default function DailyChallenge() {
               animate={{ opacity: 1, y: 0 }}
               className="space-y-4"
             >
-              {/* Grade badge */}
               <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-cyan-400/10 border border-cyan-400/20">
                 <span className="w-2 h-2 rounded-full bg-cyan-400" />
                 <span className="text-cyan-400 text-xs font-bold uppercase tracking-widest">
-                  Class {student?.class_num}-{student?.section} • {
-                    gradeGroup === 'junior' ? 'Junior' : gradeGroup === 'middle' ? 'Middle' : 'Senior'
-                  } Level
+                  {student?.class_name} •{' '}
+                  {gradeGroup === 'junior' ? 'Junior' : gradeGroup === 'middle' ? 'Middle' : 'Senior'} Level
                 </span>
               </div>
 
-              {/* Question card */}
               <div className="bg-slate-900 border border-white/10 rounded-2xl p-5">
-                <p className="text-white font-bold text-lg leading-snug">
-                  {questionText}
-                </p>
+                <p className="text-white font-bold text-lg leading-snug">{questionText}</p>
               </div>
 
-              {/* Hint */}
               {hintText && (
                 <button
                   onClick={() => setShowHint(v => !v)}
@@ -116,14 +108,12 @@ export default function DailyChallenge() {
                 </button>
               )}
 
-              {/* Already answered */}
               {answerState === 'already' && (
                 <div className="bg-slate-800 rounded-xl p-3 text-slate-400 text-sm text-center">
-                  You've already answered today! Come back tomorrow. 📅
+                  Already answered today! Come back tomorrow. 📅
                 </div>
               )}
 
-              {/* Wrong answer feedback */}
               {answerState === 'wrong' && (
                 <motion.div
                   initial={{ opacity: 0, x: -5 }}
@@ -135,13 +125,15 @@ export default function DailyChallenge() {
                 </motion.div>
               )}
 
-              {/* Answer form */}
               {answerState !== 'already' && (
                 <form onSubmit={handleSubmit} className="flex gap-2">
                   <input
                     type="text"
                     value={answer}
-                    onChange={e => { setAnswer(e.target.value); if (answerState === 'wrong') setAnswerState('idle') }}
+                    onChange={e => {
+                      setAnswer(e.target.value)
+                      if (answerState === 'wrong') setAnswerState('idle')
+                    }}
                     placeholder="Type your answer..."
                     className="flex-1 bg-slate-800 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-slate-600 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-400/50 transition"
                   />
@@ -183,7 +175,7 @@ function MasterCelebration({ studentName }: { studentName: string }) {
     <motion.div
       initial={{ scale: 0.8, opacity: 0 }}
       animate={{ scale: 1, opacity: 1 }}
-      className="flex flex-col items-center justify-center py-10 text-center space-y-4"
+      className="relative flex flex-col items-center justify-center py-10 text-center space-y-4"
     >
       {[...Array(8)].map((_, i) => (
         <motion.div

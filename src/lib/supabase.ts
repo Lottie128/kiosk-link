@@ -10,14 +10,13 @@ export const supabase = isSupabaseConfigured
   : createClient('https://placeholder.supabase.co', 'placeholder-key')
 
 // ── Types ────────────────────────────────────────────────────────────────────
+// Uses ZaiPy's shared `students` table — no separate student registration.
 
-export interface Student {
+export interface KioskStudent {
   id: string
-  name: string
-  class_num: number
-  section: 'A' | 'B'
+  display_name: string
+  class_name: string   // e.g. "Class 8-A" — comes from classes.name
   photo_url: string | null
-  created_at: string
 }
 
 export interface DailyQuestion {
@@ -29,48 +28,40 @@ export interface DailyQuestion {
   hint: string | null
 }
 
-export interface MasterOfDay {
+export interface KioskMaster {
   id: string
   student_id: string
+  display_name: string
+  class_name: string
+  photo_url: string | null
   date: string
   crowned_at: string
-  students: Student
 }
 
-// ── Helpers ──────────────────────────────────────────────────────────────────
+// ── Grade helpers ─────────────────────────────────────────────────────────────
 
-export function getGradeGroup(classNum: number): 'junior' | 'middle' | 'senior' {
-  if (classNum <= 4) return 'junior'
-  if (classNum <= 7) return 'middle'
+export function getGradeGroupFromClassName(
+  className: string,
+): 'junior' | 'middle' | 'senior' {
+  const match = className.match(/\b(\d+)\b/)
+  const num = match ? parseInt(match[1]) : 5
+  if (num <= 4) return 'junior'
+  if (num <= 7) return 'middle'
   return 'senior'
 }
 
-export async function findOrCreateStudent(
-  name: string,
-  classNum: number,
-  section: 'A' | 'B',
-): Promise<{ student: Student; created: boolean }> {
-  const { data, error } = await supabase
-    .from('students')
-    .select('*')
-    .ilike('name', name.trim())
-    .eq('class_num', classNum)
-    .eq('section', section)
-    .maybeSingle()
+// ── Student lookup (reads ZaiPy's shared students table via safe RPC) ─────────
 
-  if (data && !error) return { student: data as Student, created: false }
-
-  const { data: created, error: createErr } = await supabase
-    .from('students')
-    .insert({ name: name.trim(), class_num: classNum, section })
-    .select()
-    .single()
-
-  if (createErr) throw createErr
-  return { student: created as Student, created: true }
+export async function searchStudents(query: string): Promise<KioskStudent[]> {
+  if (!isSupabaseConfigured || query.trim().length < 2) return []
+  const { data, error } = await supabase.rpc('kiosk_find_students', { p_query: query.trim() })
+  if (error) { console.error('kiosk_find_students:', error); return [] }
+  return (data ?? []) as KioskStudent[]
 }
 
-export async function uploadStudentPhoto(
+// ── Photo upload (kiosk-photos bucket in shared project) ─────────────────────
+
+export async function uploadKioskPhoto(
   studentId: string,
   dataUrl: string,
 ): Promise<string> {
@@ -78,25 +69,30 @@ export async function uploadStudentPhoto(
   const filename = `${studentId}.jpg`
 
   const { error: uploadErr } = await supabase.storage
-    .from('student-photos')
+    .from('kiosk-photos')
     .upload(filename, blob, { contentType: 'image/jpeg', upsert: true })
 
   if (uploadErr) throw uploadErr
 
   const { data: { publicUrl } } = supabase.storage
-    .from('student-photos')
+    .from('kiosk-photos')
     .getPublicUrl(filename)
 
-  await supabase.from('students').update({ photo_url: publicUrl }).eq('id', studentId)
+  await supabase
+    .from('kiosk_student_photos')
+    .upsert({ student_id: studentId, photo_url: publicUrl, updated_at: new Date().toISOString() })
+
   return publicUrl
 }
+
+// ── Daily questions ───────────────────────────────────────────────────────────
 
 export async function getTodayQuestion(
   gradeGroup: 'junior' | 'middle' | 'senior',
 ): Promise<DailyQuestion | null> {
   const today = new Date().toISOString().split('T')[0]
   const { data } = await supabase
-    .from('daily_questions')
+    .from('kiosk_daily_questions')
     .select('*')
     .eq('date', today)
     .eq('grade_group', gradeGroup)
@@ -104,27 +100,33 @@ export async function getTodayQuestion(
   return data as DailyQuestion | null
 }
 
+// ── Answer submission ─────────────────────────────────────────────────────────
+
 export async function submitAnswer(
   studentId: string,
   questionId: string,
   answer: string,
   correctAnswer: string,
+  displayName: string,
+  className: string,
+  photoUrl: string | null,
 ): Promise<{ correct: boolean; isMaster: boolean; alreadyAnswered: boolean }> {
-  // Check if already answered
   const { data: existing } = await supabase
-    .from('daily_answers')
+    .from('kiosk_daily_answers')
     .select('id, is_correct')
     .eq('student_id', studentId)
     .eq('question_id', questionId)
     .maybeSingle()
 
-  if (existing) return { correct: (existing as any).is_correct, isMaster: false, alreadyAnswered: true }
+  if (existing) {
+    return { correct: (existing as any).is_correct, isMaster: false, alreadyAnswered: true }
+  }
 
   const isCorrect = answer.trim().toLowerCase().includes(
     correctAnswer.trim().toLowerCase(),
   )
 
-  await supabase.from('daily_answers').insert({
+  await supabase.from('kiosk_daily_answers').insert({
     student_id: studentId,
     question_id: questionId,
     is_correct: isCorrect,
@@ -132,28 +134,35 @@ export async function submitAnswer(
 
   if (!isCorrect) return { correct: false, isMaster: false, alreadyAnswered: false }
 
-  // Check if first correct answer today
   const today = new Date().toISOString().split('T')[0]
   const { data: masterExists } = await supabase
-    .from('master_of_day')
+    .from('kiosk_master_of_day')
     .select('id')
     .eq('date', today)
     .maybeSingle()
 
   if (!masterExists) {
-    await supabase.from('master_of_day').insert({ student_id: studentId, date: today })
+    await supabase.from('kiosk_master_of_day').insert({
+      student_id: studentId,
+      display_name: displayName,
+      class_name: className,
+      photo_url: photoUrl,
+      date: today,
+    })
     return { correct: true, isMaster: true, alreadyAnswered: false }
   }
 
   return { correct: true, isMaster: false, alreadyAnswered: false }
 }
 
-export async function getTodayMaster(): Promise<MasterOfDay | null> {
+// ── Master of the Day ─────────────────────────────────────────────────────────
+
+export async function getTodayMaster(): Promise<KioskMaster | null> {
   const today = new Date().toISOString().split('T')[0]
   const { data } = await supabase
-    .from('master_of_day')
-    .select('*, students(*)')
+    .from('kiosk_master_of_day')
+    .select('*')
     .eq('date', today)
     .maybeSingle()
-  return data as MasterOfDay | null
+  return data as KioskMaster | null
 }

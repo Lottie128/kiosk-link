@@ -29,10 +29,10 @@ export default function StudentApp() {
             <h1 className="font-black text-base leading-none text-white">
               {tab === 'challenge' && '🏆 Daily Challenge'}
               {tab === 'chat' && '🤖 Chat with ARIA'}
-              {tab === 'profile' && `👤 ${student.name.split(' ')[0]}`}
+              {tab === 'profile' && `👤 ${student.display_name.split(' ')[0]}`}
             </h1>
             <p className="text-[10px] text-cyan-400 uppercase tracking-widest font-bold mt-0.5">
-              Drishti STEM Lab • Class {student.class_num}-{student.section}
+              Drishti STEM Lab • {student.class_name}
             </p>
           </div>
           <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-cyan-400/20 to-purple-500/20 border border-white/10 flex items-center justify-center">
