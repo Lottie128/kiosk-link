@@ -1,172 +1,315 @@
-import React, { useEffect, useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { supabase, isSupabaseConfigured } from '../lib/supabase';
-import { AlertTriangle } from 'lucide-react';
+import React, { useEffect, useState } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { getTodayMaster, getTodayQuestion, isSupabaseConfigured, supabase } from '../lib/supabase'
+import type { MasterOfDay } from '../lib/supabase'
+import { getDailyFallbackQuestion } from '../lib/questions'
 
-const KioskView: React.FC = () => {
-  const [currentMessage, setCurrentMessage] = useState<string | null>(null);
-  const [isThinking, setIsThinking] = useState(false);
-  const [, setAdminName] = useState<string | null>(null);
-  const [master] = useState<{name: string, class: string, photo: string} | null>({
-    name: "Aryan Sharma",
-    class: "8-A",
-    photo: "https://api.dicebear.com/7.x/avataaars/svg?seed=Aryan"
-  });
+interface KioskMessage { text: string; studentName: string }
 
-  // Get current URL for QR code (points to the mobile view /remote)
-  const mobileUrl = `${window.location.origin}/remote`;
+const KIOSK_URL = typeof window !== 'undefined'
+  ? `${window.location.origin}/`
+  : ''
 
+export default function KioskView() {
+  const [master, setMaster] = useState<MasterOfDay | null>(null)
+  const [question, setQuestion] = useState<string | null>(null)
+  const [kioskMsg, setKioskMsg] = useState<KioskMessage | null>(null)
+  const [orbActive, setOrbActive] = useState(false)
+  const [time, setTime] = useState(new Date())
+
+  // Clock tick
   useEffect(() => {
-    if (!isSupabaseConfigured) return;
+    const t = setInterval(() => setTime(new Date()), 1000)
+    return () => clearInterval(t)
+  }, [])
 
-    const channel = supabase
-      .channel('kiosk-state')
+  // Load today's master + question
+  useEffect(() => {
+    async function load() {
+      const m = await getTodayMaster()
+      setMaster(m)
+
+      // Try each grade group for a question to display on kiosk
+      const today = new Date().toISOString().split('T')[0]
+      for (const g of ['middle', 'junior', 'senior'] as const) {
+        const q = isSupabaseConfigured ? await getTodayQuestion(g) : null
+        if (q) { setQuestion(q.question); break }
+      }
+      if (!question) {
+        setQuestion(getDailyFallbackQuestion('middle').question)
+      }
+    }
+    load()
+  }, [])
+
+  // Realtime: new master crowned
+  useEffect(() => {
+    if (!isSupabaseConfigured) return
+    const ch = supabase
+      .channel('public:master_of_day')
+      .on('postgres_changes', {
+        event: 'INSERT', schema: 'public', table: 'master_of_day',
+      }, async () => {
+        const m = await getTodayMaster()
+        setMaster(m)
+      })
+      .subscribe()
+    return () => { supabase.removeChannel(ch) }
+  }, [])
+
+  // Realtime: AI message from student PWA
+  useEffect(() => {
+    if (!isSupabaseConfigured) return
+    const ch = supabase
+      .channel('kiosk-live')
       .on('broadcast', { event: 'ai-response' }, (payload: any) => {
-        setCurrentMessage(payload.text);
-        setAdminName(payload.adminName);
-        setIsThinking(false);
-        
-        // Clear message after 8 seconds
-        setTimeout(() => setCurrentMessage(null), 8000);
+        setKioskMsg({ text: payload.payload.text, studentName: payload.payload.studentName })
+        setOrbActive(true)
+        setTimeout(() => { setKioskMsg(null); setOrbActive(false) }, 10000)
       })
-      .on('broadcast', { event: 'admin-speaking' }, () => {
-        setIsThinking(true);
-      })
-      .subscribe();
+      .subscribe()
+    return () => { supabase.removeChannel(ch) }
+  }, [])
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, []);
+  const masterStudent = master?.students
+  const masterPhoto = masterStudent?.photo_url
+    ?? (masterStudent
+      ? `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(masterStudent.name)}`
+      : null)
+
+  const timeStr = time.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })
+  const dateStr = time.toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' })
 
   return (
-    <div className="kiosk-container overflow-hidden text-white font-sans flex flex-col items-center relative h-screen w-screen px-6 py-12 md:py-16">
-      
-      {/* Background Ambient Glow */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <motion.div 
-          animate={{ scale: [1, 1.1, 1], opacity: [0.1, 0.2, 0.1] }}
-          transition={{ duration: 10, repeat: Infinity }}
-          className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(0,242,254,0.1)_0%,transparent_70%)]"
-        />
+    <div className="kiosk-root">
+      {/* Starfield background */}
+      <div className="kiosk-stars" aria-hidden="true">
+        {[...Array(60)].map((_, i) => (
+          <div
+            key={i}
+            className="star"
+            style={{
+              left: `${Math.random() * 100}%`,
+              top: `${Math.random() * 100}%`,
+              animationDelay: `${Math.random() * 4}s`,
+              width: `${1 + Math.random() * 2}px`,
+              height: `${1 + Math.random() * 2}px`,
+            }}
+          />
+        ))}
       </div>
 
-      {/* 1. TOP SECTION: Wall of Fame */}
-      <motion.section 
-        initial={{ y: -30, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        className="relative z-20 w-full max-w-sm flex-shrink-0"
-      >
-        <div className="flex flex-col items-center">
-          <div className="bg-slate-900/40 border border-white/10 backdrop-blur-xl rounded-[2rem] p-5 w-full flex items-center gap-5 glow-border">
-             <div className="relative flex-shrink-0">
-                <img src={master?.photo} className="w-16 h-16 rounded-2xl border-2 border-yellow-500 shadow-[0_0_15px_rgba(234,179,8,0.3)]" alt="Master" />
-                <div className="absolute -top-2 -right-2 bg-yellow-500 p-1 rounded-lg">
-                  <span className="text-[8px] font-black text-slate-900 uppercase">Master</span>
-                </div>
-             </div>
-             <div className="min-w-0">
-                <h3 className="text-lg font-black tracking-tight truncate">{master?.name}</h3>
-                <p className="text-yellow-500/80 text-[10px] font-bold uppercase tracking-widest">Class {master?.class} • STEM Prodigy</p>
-             </div>
-          </div>
-          <p className="mt-3 text-[9px] uppercase tracking-[0.4em] text-slate-500 font-bold">Wall of Fame</p>
-        </div>
-      </motion.section>
+      {/* Ambient glows */}
+      <div className="pointer-events-none absolute inset-0">
+        <div className="absolute top-0 right-0 w-64 h-64 rounded-full bg-cyan-500/8 blur-3xl" />
+        <div className="absolute bottom-0 left-0 w-64 h-64 rounded-full bg-purple-500/8 blur-3xl" />
+      </div>
 
-      {/* 2. CENTER SECTION: The Living AI Orb (Expands to fill space) */}
-      <main className="relative z-10 flex-1 flex flex-col items-center justify-center w-full min-h-0 py-8">
-        <div className="relative w-full aspect-square max-w-[320px] max-h-[320px] flex items-center justify-center">
-          {[...Array(3)].map((_, i) => (
+      {/* ── SECTION 1: School header ── */}
+      <section className="kiosk-section-header">
+        <div className="flex items-center justify-between px-8 pt-8">
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
+              <span className="text-cyan-400 text-[10px] font-black uppercase tracking-[0.3em]">Live</span>
+            </div>
+            <h1 className="text-white font-black text-2xl leading-tight">
+              Drishti RC Jain
+            </h1>
+            <p className="text-slate-400 text-xs font-bold tracking-widest uppercase mt-0.5">
+              Innovative Public School
+            </p>
+          </div>
+          <div className="text-right">
+            <p className="text-white font-black text-2xl tabular-nums">{timeStr}</p>
+            <p className="text-slate-500 text-[10px] uppercase tracking-widest">{dateStr}</p>
+          </div>
+        </div>
+
+        {/* STEM Lab badge */}
+        <div className="flex justify-center mt-4">
+          <div className="px-5 py-1.5 rounded-full bg-gradient-to-r from-cyan-400/20 to-purple-500/20 border border-white/10 backdrop-blur">
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-purple-400 font-black text-sm uppercase tracking-[0.3em]">
+              ⚡ STEM Lab
+            </span>
+          </div>
+        </div>
+      </section>
+
+      {/* ── SECTION 2: Master of the Day ── */}
+      <section className="kiosk-section-master px-8 mt-6">
+        <p className="text-[10px] font-black text-yellow-400/70 uppercase tracking-[0.4em] mb-3">
+          🏆 Master of the Day
+        </p>
+
+        {masterStudent ? (
+          <motion.div
+            key={masterStudent.id}
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            className="master-card"
+          >
+            <div className="master-photo-ring">
+              <img
+                src={masterPhoto!}
+                alt={masterStudent.name}
+                className="w-full h-full object-cover rounded-full"
+              />
+            </div>
+            <div className="min-w-0">
+              <h2 className="text-white font-black text-xl truncate leading-tight">
+                {masterStudent.name}
+              </h2>
+              <p className="text-yellow-400 text-xs font-bold uppercase tracking-widest">
+                Class {masterStudent.class_num}-{masterStudent.section}
+              </p>
+              <p className="text-slate-500 text-[10px] uppercase tracking-widest mt-0.5">
+                STEM Prodigy
+              </p>
+            </div>
+            <div className="flex-shrink-0 ml-auto">
+              <span className="text-3xl">👑</span>
+            </div>
+          </motion.div>
+        ) : (
+          <div className="master-card opacity-60">
+            <div className="master-photo-ring bg-slate-800">
+              <span className="text-3xl">?</span>
+            </div>
+            <div>
+              <p className="text-slate-400 font-bold text-sm">No Master Yet Today</p>
+              <p className="text-slate-600 text-xs mt-0.5">Scan to be the first!</p>
+            </div>
+          </div>
+        )}
+      </section>
+
+      {/* ── SECTION 3: AI Orb ── */}
+      <section className="kiosk-section-orb flex flex-col items-center justify-center flex-1 py-4">
+        <div className="relative flex items-center justify-center">
+          {/* Outer pulse rings */}
+          {[1, 2, 3].map(i => (
             <motion.div
               key={i}
-              animate={{ 
-                scale: isThinking ? [1, 1.3, 1] : [1, 1.15, 1],
-                opacity: [0.1, 0.25, 0.1],
-                rotate: i * 120 + (isThinking ? 360 : 0)
+              className="absolute rounded-full border border-cyan-400/15"
+              animate={{
+                scale: orbActive ? [1, 1.4 + i * 0.15, 1] : [1, 1.1 + i * 0.08, 1],
+                opacity: [0.4, 0.1, 0.4],
               }}
-              transition={{ duration: isThinking ? 2 : 6, repeat: Infinity, ease: "linear" }}
-              className="absolute inset-0 border border-stem-light/20 rounded-[35%] blur-[1px]"
+              transition={{
+                duration: orbActive ? 1.5 : 4,
+                repeat: Infinity,
+                delay: i * (orbActive ? 0.2 : 0.6),
+                ease: 'easeInOut',
+              }}
+              style={{ width: 80 + i * 50, height: 80 + i * 50 }}
             />
           ))}
 
-          <motion.div 
-            animate={{ 
-              scale: isThinking ? [1, 1.05, 1] : 1,
-              boxShadow: isThinking ? "0 0 100px rgba(0,242,254,0.4)" : "0 0 60px rgba(123,97,255,0.15)"
+          {/* Core orb */}
+          <motion.div
+            animate={{
+              boxShadow: orbActive
+                ? ['0 0 40px rgba(0,242,254,0.5)', '0 0 80px rgba(0,242,254,0.8)', '0 0 40px rgba(0,242,254,0.5)']
+                : ['0 0 20px rgba(123,97,255,0.3)', '0 0 40px rgba(123,97,255,0.5)', '0 0 20px rgba(123,97,255,0.3)'],
+              scale: orbActive ? [1, 1.06, 1] : 1,
             }}
-            className="w-40 h-40 sm:w-48 sm:h-48 bg-gradient-to-br from-stem-light via-stem-accent to-purple-600 rounded-full flex items-center justify-center relative overflow-hidden"
+            transition={{ duration: orbActive ? 1.5 : 4, repeat: Infinity }}
+            className={`relative z-10 w-36 h-36 rounded-full flex flex-col items-center justify-center overflow-hidden transition-all duration-700 ${
+              orbActive
+                ? 'bg-gradient-to-br from-cyan-300 via-cyan-500 to-blue-600'
+                : 'bg-gradient-to-br from-purple-500 via-violet-600 to-indigo-700'
+            }`}
           >
-            <motion.div 
+            {/* Inner shine */}
+            <div className="absolute top-3 left-4 w-8 h-4 bg-white/25 rounded-full blur-md" />
+            <motion.span
               animate={{ rotate: 360 }}
-              transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
-              className="absolute inset-0 opacity-20 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')]"
-            />
-            <span className="text-5xl sm:text-6xl filter drop-shadow-2xl">⚡</span>
+              transition={{ duration: 20, repeat: Infinity, ease: 'linear' }}
+              className="text-4xl filter drop-shadow-lg"
+            >
+              {orbActive ? '🤖' : '⚡'}
+            </motion.span>
+            <p className="text-white/70 text-[8px] font-black uppercase tracking-widest mt-1">
+              {orbActive ? 'ARIA' : 'AI BRAIN'}
+            </p>
           </motion.div>
         </div>
-        
-        <AnimatePresence>
-          {!currentMessage && (
-            <motion.div 
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="mt-6 text-center"
-            >
-              <h2 className="text-xl font-black tracking-tighter uppercase text-stem-light">AI Brain Active</h2>
-              <p className="text-[9px] tracking-[0.3em] text-slate-500 mt-1 uppercase">Drishti RC Jain STEM Lab</p>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </main>
 
-      {/* 3. BOTTOM SECTION: Messages & QR */}
-      <footer className="relative z-20 w-full flex flex-col items-center flex-shrink-0">
-        
-        {/* Cinematic Subtitles (Fixed height to prevent jumping) */}
-        <div className="h-[80px] sm:h-[100px] flex items-center justify-center px-6 text-center mb-6 overflow-hidden">
+        {/* AI Message */}
+        <div className="mt-6 px-8 w-full min-h-[80px] flex items-center justify-center">
           <AnimatePresence mode="wait">
-            {currentMessage && (
-              <motion.h2 
-                key={currentMessage}
-                initial={{ y: 20, opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                exit={{ y: -20, opacity: 0 }}
-                className="text-2xl sm:text-3xl font-black leading-tight glow-text text-white line-clamp-2"
+            {kioskMsg ? (
+              <motion.div
+                key="msg"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                className="text-center"
               >
-                {currentMessage}
-              </motion.h2>
+                <p className="text-[10px] text-cyan-400/60 uppercase tracking-widest font-bold mb-2">
+                  {kioskMsg.studentName} asked ARIA
+                </p>
+                <p className="text-white font-bold text-lg leading-snug text-center line-clamp-4">
+                  "{kioskMsg.text}"
+                </p>
+              </motion.div>
+            ) : (
+              <motion.div
+                key="idle"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="text-center"
+              >
+                <p className="text-white font-black text-xl tracking-tight">AI Brain Active</p>
+                <p className="text-slate-500 text-xs uppercase tracking-[0.3em] mt-1">
+                  Scan to chat with ARIA
+                </p>
+              </motion.div>
             )}
           </AnimatePresence>
         </div>
+      </section>
 
-        {/* QR Code Container (Scaled down for responsiveness) */}
-        <div className="flex flex-col items-center bg-slate-900/40 backdrop-blur-xl border border-white/5 p-4 sm:p-5 rounded-[2rem]">
-           <div className="bg-white p-2 rounded-xl">
-              <img 
-                src={`https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(mobileUrl)}&bgcolor=ffffff&color=0f172a&margin=8`} 
-                alt="QR Code"
-                className="w-24 h-24 sm:w-28 sm:h-28"
-              />
-           </div>
-           <p className="mt-3 text-[8px] font-bold uppercase tracking-[0.2em] text-stem-light">Scan to Connect</p>
+      {/* ── SECTION 4: Daily Challenge ── */}
+      <section className="kiosk-section-challenge px-8">
+        <p className="text-[10px] font-black text-purple-400/70 uppercase tracking-[0.4em] mb-3">
+          📅 Today's Challenge
+        </p>
+        {question ? (
+          <div className="bg-slate-900/60 border border-purple-500/20 backdrop-blur rounded-2xl p-4">
+            <p className="text-white font-bold text-base leading-snug">{question}</p>
+            <p className="text-slate-500 text-xs mt-2">First correct answer = Master of the Day!</p>
+          </div>
+        ) : (
+          <div className="bg-slate-900/60 border border-white/10 rounded-2xl p-4">
+            <p className="text-slate-500 text-sm">Loading today's challenge...</p>
+          </div>
+        )}
+      </section>
+
+      {/* ── SECTION 5: QR Code ── */}
+      <section className="kiosk-section-qr px-8 pb-8 flex flex-col items-center">
+        <div className="flex items-center gap-5 bg-slate-900/60 border border-white/10 backdrop-blur-xl rounded-2xl p-4 w-full">
+          <div className="bg-white p-2.5 rounded-xl flex-shrink-0">
+            <img
+              src={`https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent(KIOSK_URL)}&bgcolor=ffffff&color=0f172a&margin=6`}
+              alt="QR"
+              width={100}
+              height={100}
+              className="rounded"
+            />
+          </div>
+          <div>
+            <p className="text-white font-black text-base">Join on your phone</p>
+            <p className="text-slate-400 text-xs mt-1 leading-relaxed">
+              Scan to answer the challenge, chat with ARIA, and become Master of the Day!
+            </p>
+            <p className="text-cyan-400/60 text-[10px] mt-2 font-mono">{KIOSK_URL}</p>
+          </div>
         </div>
-      </footer>
-
-
-      {/* Configuration Warning */}
-      {!isSupabaseConfigured && (
-        <div className="absolute top-4 left-4 right-4 bg-yellow-500/10 border border-yellow-500/20 backdrop-blur-md p-4 rounded-xl flex items-center gap-3 z-50">
-          <AlertTriangle className="text-yellow-500 w-5 h-5 flex-shrink-0" />
-          <p className="text-xs text-yellow-200/80">
-            <span className="font-bold text-yellow-500">Notice:</span> Supabase keys missing. Kiosk is in offline demo mode.
-          </p>
-        </div>
-      )}
-
+      </section>
     </div>
-  );
-};
-
-export default KioskView;
+  )
+}
