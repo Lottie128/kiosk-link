@@ -1,18 +1,27 @@
 import React, { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Trophy, Bot, User } from 'lucide-react'
+import { Trophy, Bot, User, BookOpen } from 'lucide-react'
 import { useAuthStore } from '../store/authStore'
 import DailyChallenge from '../components/DailyChallenge'
 import AIChat from '../components/AIChat'
 import ProfileTab from '../components/ProfileTab'
+import LessonsCarousel from '../components/LessonsCarousel'
 
-type Tab = 'challenge' | 'chat' | 'profile'
+type Tab = 'challenge' | 'lessons' | 'chat' | 'profile'
 
 const TABS: { id: Tab; icon: React.ReactNode; label: string }[] = [
-  { id: 'challenge', icon: <Trophy className="w-5 h-5" />, label: 'Challenge' },
-  { id: 'chat',      icon: <Bot className="w-5 h-5" />,    label: 'ARIA' },
-  { id: 'profile',   icon: <User className="w-5 h-5" />,   label: 'Profile' },
+  { id: 'challenge', icon: <Trophy className="w-5 h-5" />,   label: 'Challenge' },
+  { id: 'lessons',   icon: <BookOpen className="w-5 h-5" />, label: 'Lessons' },
+  { id: 'chat',      icon: <Bot className="w-5 h-5" />,      label: 'ARIA' },
+  { id: 'profile',   icon: <User className="w-5 h-5" />,     label: 'Profile' },
 ]
+
+const TAB_TITLES: Record<Tab, string> = {
+  challenge: '🏆 Daily Challenge',
+  lessons:   '📚 Lesson Questions',
+  chat:      '🤖 Chat with ARIA',
+  profile:   '👤 Profile',
+}
 
 export default function StudentApp() {
   const { student } = useAuthStore()
@@ -27,9 +36,7 @@ export default function StudentApp() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="font-black text-base leading-none text-white">
-              {tab === 'challenge' && '🏆 Daily Challenge'}
-              {tab === 'chat' && '🤖 Chat with ARIA'}
-              {tab === 'profile' && `👤 ${student.display_name.split(' ')[0]}`}
+              {tab === 'profile' ? `👤 ${student.display_name.split(' ')[0]}` : TAB_TITLES[tab]}
             </h1>
             <p className="text-[10px] text-cyan-400 uppercase tracking-widest font-bold mt-0.5">
               Drishti STEM Lab • {student.class_name}
@@ -53,8 +60,9 @@ export default function StudentApp() {
             className="h-full"
           >
             {tab === 'challenge' && <DailyChallenge />}
-            {tab === 'chat' && <AIChat />}
-            {tab === 'profile' && <ProfileTab />}
+            {tab === 'lessons'   && <LessonsCarousel />}
+            {tab === 'chat'      && <AIChat />}
+            {tab === 'profile'   && <ProfileTab />}
           </motion.div>
         </AnimatePresence>
       </main>
@@ -76,10 +84,8 @@ export default function StudentApp() {
             <button
               key={t.id}
               onClick={() => setTab(t.id)}
-              className={`flex-1 flex flex-col items-center gap-1 py-3 transition-colors ${
-                tab === t.id
-                  ? 'text-cyan-400'
-                  : 'text-slate-600 hover:text-slate-400'
+              className={`flex-1 flex flex-col items-center gap-1 py-3 transition-colors relative ${
+                tab === t.id ? 'text-cyan-400' : 'text-slate-600 hover:text-slate-400'
               }`}
             >
               {t.icon}
@@ -87,7 +93,7 @@ export default function StudentApp() {
               {tab === t.id && (
                 <motion.div
                   layoutId="tab-indicator"
-                  className="absolute bottom-0 w-8 h-0.5 bg-cyan-400 rounded-full"
+                  className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 bg-cyan-400 rounded-full"
                 />
               )}
             </button>
