@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { motion } from 'framer-motion'
 import { Camera, Upload, LogOut, FlaskConical } from 'lucide-react'
 import { useAuthStore } from '../store/authStore'
@@ -12,6 +12,14 @@ export default function ProfileTab() {
   const [cameraActive, setCameraActive] = useState(false)
   const [uploading, setUploading] = useState(false)
   const streamRef = useRef<MediaStream | null>(null)
+
+  // Attach stream to video element after React renders it into the DOM
+  useEffect(() => {
+    if (cameraActive && streamRef.current && videoRef.current) {
+      videoRef.current.srcObject = streamRef.current
+      videoRef.current.play().catch(() => {})
+    }
+  }, [cameraActive])
 
   if (!student) return null
 
@@ -27,10 +35,10 @@ export default function ProfileTab() {
         video: { facingMode: 'user', width: 640, height: 640 },
       })
       streamRef.current = stream
-      if (videoRef.current) { videoRef.current.srcObject = stream; videoRef.current.play() }
-      setCameraActive(true)
-    } catch {
-      alert('Camera access denied. Please allow camera in your browser settings.')
+      setCameraActive(true) // renders <video>, then useEffect attaches srcObject
+    } catch (err) {
+      console.error('Camera error:', err)
+      alert('Could not open camera. Please allow camera access in your browser settings and try again.')
     }
   }
 
@@ -86,7 +94,7 @@ export default function ProfileTab() {
       {/* Profile card */}
       <div className="bg-slate-900 border border-white/10 rounded-2xl p-5">
         <div className="flex items-center gap-4">
-          <div className="relative">
+          <div className="relative flex-shrink-0">
             <img
               src={photoSrc}
               alt={student.display_name}
@@ -97,13 +105,6 @@ export default function ProfileTab() {
                 <div className="w-5 h-5 border-2 border-cyan-400/40 border-t-cyan-400 rounded-full animate-spin" />
               </div>
             )}
-            <button
-              onClick={cameraActive ? stopCamera : startCamera}
-              className="absolute -bottom-2 -right-2 w-7 h-7 bg-cyan-400 rounded-full flex items-center justify-center shadow"
-              title="Take selfie"
-            >
-              <Camera className="w-3.5 h-3.5 text-slate-900" />
-            </button>
           </div>
           <input
             ref={fileInputRef}
@@ -125,7 +126,7 @@ export default function ProfileTab() {
                 className="flex items-center gap-1.5 px-3 py-1.5 bg-cyan-400/10 border border-cyan-400/20 text-cyan-400 rounded-lg text-xs font-bold hover:bg-cyan-400/20 transition"
               >
                 <Camera className="w-3.5 h-3.5" />
-                Selfie
+                {cameraActive ? 'Cancel' : 'Selfie'}
               </button>
               <button
                 onClick={() => fileInputRef.current?.click()}
@@ -140,14 +141,14 @@ export default function ProfileTab() {
         </div>
       </div>
 
-      {/* Camera */}
+      {/* Camera view */}
       {cameraActive && (
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           className="bg-slate-900 border border-white/10 rounded-2xl overflow-hidden"
         >
-          <video ref={videoRef} className="w-full aspect-square object-cover" muted playsInline />
+          <video ref={videoRef} className="w-full aspect-square object-cover" muted playsInline autoPlay />
           <canvas ref={canvasRef} className="hidden" />
           <div className="p-4 flex gap-3">
             <button
@@ -157,7 +158,10 @@ export default function ProfileTab() {
             >
               {uploading ? 'Saving...' : '📸 Take Photo'}
             </button>
-            <button onClick={stopCamera} className="px-4 py-3 bg-slate-800 text-slate-400 rounded-xl hover:bg-slate-700 transition">
+            <button
+              onClick={stopCamera}
+              className="px-4 py-3 bg-slate-800 text-slate-400 rounded-xl hover:bg-slate-700 transition"
+            >
               Cancel
             </button>
           </div>
@@ -168,8 +172,8 @@ export default function ProfileTab() {
       <div className="bg-slate-900 border border-white/10 rounded-2xl p-5 space-y-3">
         <h3 className="text-slate-400 text-xs font-bold uppercase tracking-widest">How It Works</h3>
         {[
+          { icon: '📸', text: 'Take a selfie or upload a photo first — it shows on the kiosk if you win' },
           { icon: '🏆', text: 'Answer the daily challenge first to become Master of the Day' },
-          { icon: '📸', text: 'Take a photo — it shows on the STEM Lab kiosk all day' },
           { icon: '🤖', text: 'Chat with ARIA about any STEM topic' },
           { icon: '📡', text: 'Your AI chats display live on the kiosk screen' },
         ].map(({ icon, text }) => (
