@@ -1,6 +1,6 @@
 import React, { useRef, useState } from 'react'
 import { motion } from 'framer-motion'
-import { Camera, LogOut, FlaskConical } from 'lucide-react'
+import { Camera, Upload, LogOut, FlaskConical } from 'lucide-react'
 import { useAuthStore } from '../store/authStore'
 import { uploadKioskPhoto, getGradeGroupFromClassName, isSupabaseConfigured } from '../lib/supabase'
 
@@ -8,6 +8,7 @@ export default function ProfileTab() {
   const { student, logout, updatePhoto } = useAuthStore()
   const videoRef = useRef<HTMLVideoElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const [cameraActive, setCameraActive] = useState(false)
   const [uploading, setUploading] = useState(false)
   const streamRef = useRef<MediaStream | null>(null)
@@ -37,6 +38,27 @@ export default function ProfileTab() {
     streamRef.current?.getTracks().forEach(t => t.stop())
     streamRef.current = null
     setCameraActive(false)
+  }
+
+  async function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = async (ev) => {
+      const dataUrl = ev.target?.result as string
+      if (!isSupabaseConfigured) { updatePhoto(dataUrl); return }
+      setUploading(true)
+      try {
+        const url = await uploadKioskPhoto(student.id, dataUrl)
+        updatePhoto(url)
+      } catch {
+        updatePhoto(dataUrl)
+      } finally {
+        setUploading(false)
+        if (fileInputRef.current) fileInputRef.current.value = ''
+      }
+    }
+    reader.readAsDataURL(file)
   }
 
   async function takePhoto() {
@@ -70,19 +92,49 @@ export default function ProfileTab() {
               alt={student.display_name}
               className="w-20 h-20 rounded-2xl object-cover border-2 border-cyan-400/40 shadow-lg"
             />
+            {uploading && (
+              <div className="absolute inset-0 rounded-2xl bg-slate-900/70 flex items-center justify-center">
+                <div className="w-5 h-5 border-2 border-cyan-400/40 border-t-cyan-400 rounded-full animate-spin" />
+              </div>
+            )}
             <button
               onClick={cameraActive ? stopCamera : startCamera}
               className="absolute -bottom-2 -right-2 w-7 h-7 bg-cyan-400 rounded-full flex items-center justify-center shadow"
+              title="Take selfie"
             >
               <Camera className="w-3.5 h-3.5 text-slate-900" />
             </button>
           </div>
-          <div className="min-w-0">
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={handleFileUpload}
+          />
+          <div className="min-w-0 flex-1">
             <h2 className="text-white font-black text-xl truncate">{student.display_name}</h2>
             <p className="text-cyan-400 text-sm font-bold">{student.class_name}</p>
             <div className="mt-1 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-purple-500/20 border border-purple-500/20">
               <FlaskConical className="w-3 h-3 text-purple-400" />
               <span className="text-purple-300 text-xs font-bold">{gradeLabel} STEM</span>
+            </div>
+            <div className="mt-3 flex gap-2">
+              <button
+                onClick={cameraActive ? stopCamera : startCamera}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-cyan-400/10 border border-cyan-400/20 text-cyan-400 rounded-lg text-xs font-bold hover:bg-cyan-400/20 transition"
+              >
+                <Camera className="w-3.5 h-3.5" />
+                Selfie
+              </button>
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploading}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-purple-400/10 border border-purple-400/20 text-purple-400 rounded-lg text-xs font-bold hover:bg-purple-400/20 disabled:opacity-50 transition"
+              >
+                <Upload className="w-3.5 h-3.5" />
+                {uploading ? 'Saving…' : 'Upload'}
+              </button>
             </div>
           </div>
         </div>

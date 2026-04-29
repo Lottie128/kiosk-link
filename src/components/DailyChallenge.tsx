@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Trophy, Lightbulb, Send, CheckCircle, XCircle, Crown } from 'lucide-react'
 import { useAuthStore } from '../store/authStore'
 import {
-  getTodayQuestion, submitAnswer, getGradeGroupFromClassName, isSupabaseConfigured,
+  getTodayQuestion, submitAnswer, nominateMaster, getGradeGroupFromClassName, isSupabaseConfigured,
 } from '../lib/supabase'
 import type { DailyQuestion } from '../lib/supabase'
 import { getDailyFallbackQuestion } from '../lib/questions'
@@ -50,7 +50,15 @@ export default function DailyChallenge() {
       setAnswerState(result.correct ? 'correct' : 'wrong')
     } else if (fallback) {
       const correct = answer.trim().toLowerCase().includes(fallback.answer.toLowerCase())
-      setAnswerState(correct ? 'correct' : 'wrong')
+      if (!correct) { setAnswerState('wrong'); return }
+      if (student && isSupabaseConfigured) {
+        const isMaster = await nominateMaster(
+          student.id, student.display_name, student.class_name, student.photo_url,
+        )
+        setAnswerState(isMaster ? 'master' : 'correct')
+      } else {
+        setAnswerState('correct')
+      }
     }
   }
 

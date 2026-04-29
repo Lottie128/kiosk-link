@@ -160,6 +160,32 @@ export async function submitAnswer(
   return { correct: true, isMaster: false, alreadyAnswered: false }
 }
 
+// ── Nominate master without a question record (fallback/offline path) ─────────
+
+export async function nominateMaster(
+  studentId: string,
+  displayName: string,
+  className: string,
+  photoUrl: string | null,
+): Promise<boolean> {
+  if (!isSupabaseConfigured) return false
+  const today = new Date().toISOString().split('T')[0]
+  const { data: existing } = await supabase
+    .from('kiosk_master_of_day')
+    .select('id')
+    .eq('date', today)
+    .maybeSingle()
+  if (existing) return false
+  const { error } = await supabase.from('kiosk_master_of_day').insert({
+    student_id: studentId,
+    display_name: displayName,
+    class_name: className,
+    photo_url: photoUrl,
+    date: today,
+  })
+  return !error
+}
+
 // ── Master of the Day ─────────────────────────────────────────────────────────
 
 export async function getTodayMaster(): Promise<KioskMaster | null> {
