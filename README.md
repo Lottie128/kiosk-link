@@ -117,14 +117,14 @@ A student's class number maps to a group; they only see their group's content.
 
 ## Relationship to the STEM Suite
 
-Kiosk Link **is not** one of the four licensed product apps (ZaiSim / ZaiBlock / ZeroSpark / ZaiPy). It's a custom companion app for Drishti's physical STEM lab. It:
+As of v2.0.0, **Kiosk Link is one of the five licensed product apps** (ZeroSpark / ZaiBlock / ZaiSim / ZaiPy / Kiosk Link). Each school needs a row in `school_apps` with `app = 'kiosk'` to use the `/join` student route — gated by the entitlement check.
 
 - ✅ Shares the same Supabase project, auth, and `students` table
-- ✅ Reads daily content from kiosk-specific tables
-- ❌ Does **not** consume an entry in `school_apps` — no per-school entitlement gating
-- ❌ Is not currently productized for other schools
+- ✅ Reads daily content from per-school kiosk tables (`school_id` added in v2.0.0)
+- ✅ Consumes an entry in `school_apps` — licensable per-school with expiry
+- ✅ Public `/` (KioskView) remains ungated — it's a lab display, not a per-user surface
 
-If you want to license a kiosk experience to another school in future, the cleanest path is to add a `school_id` column to the `kiosk_*` tables and wire in the standard entitlement gate from the four product apps.
+Licence management lives in the [ZeroAI Admin Console](https://admin.zeroaitech.tech).
 
 ---
 

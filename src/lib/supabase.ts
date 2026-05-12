@@ -13,10 +13,11 @@ export const supabase = isSupabaseConfigured
 // Uses ZaiPy's shared `students` table — no separate student registration.
 
 export interface KioskStudent {
-  id: string
+  id:           string
   display_name: string
-  class_name: string   // e.g. "Class 8-A" — comes from classes.name
-  photo_url: string | null
+  class_id:     string    // uuid — needed by the entitlement gate to resolve school
+  class_name:   string    // e.g. "Class 8-A" — comes from classes.name
+  photo_url:    string | null
 }
 
 export interface DailyQuestion {

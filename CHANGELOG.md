@@ -4,6 +4,38 @@ All notable changes to kiosk-link are documented here. Format inspired by [Keep 
 
 ---
 
+## [2.0.0] — 2026-05-12
+
+### Summary
+**Kiosk Link joins the productized STEM Suite.** Now licensed per-school via the shared `school_apps` table as a 5th licensable app (`'kiosk'`), with country-aware paywall behaviour matching the rest of the suite.
+
+### Added
+
+**Entitlement gate** on the `/join` student route
+- New `src/lib/entitlement.ts` — same shape as the other product apps; AppName extended to include `'kiosk'`
+- New `src/components/EntitlementGate.tsx` — reads from kiosk-link's `authStore.student` (custom student model) and looks up the student's school via `classes.school_id`
+- KioskView (`/`) remains **public, ungated** — it's a passive lab display with no user session, so no licensing check applies
+- Paywall contact is country-aware: school's own contact takes priority, then Philippines → Apple Tutors, then ZeroAI global
+
+**Schema changes** (`migrate-kiosk-into-suite.sql`, lives in the zeroai-admin repo)
+- `school_apps.app` CHECK constraint extended to include `'kiosk'`
+- `pricing_plans.app` constraint extended to include `'kiosk'`
+- `kiosk_daily_questions.school_id` and `kiosk_master_of_day.school_id` columns added with FK to `schools(id)`, indexed
+- Drishti is granted the `'kiosk'` app through 2028-01-01
+- All existing `kiosk_daily_questions` and `kiosk_master_of_day` rows backfilled to Drishti
+- `kiosk_find_students` RPC updated to return `class_id` (needed by the entitlement gate)
+
+**`KioskStudent` interface** now includes `class_id: string` (uuid) — required to resolve the student's school via the gate
+
+### Notes
+- Existing students who logged in before this release may need to log out + log back in to pick up the new `class_id` field. The persisted `localStorage` session won't include it
+- Multi-school kiosks aren't fully wired yet: `KioskView` still reads global daily questions/master rather than filtering by `school_id`. Future work — the columns are in place
+
+### Security
+- Same RLS read posture as the other licensing tables — `school_apps`, `schools`, `classes` need open SELECT policies for the gate to work. Run `URGENT-fix-signin.sql` (in zeroai-admin) if upgrading from an older deploy
+
+---
+
 ## [1.0.0] — 2026-05-12
 
 ### Summary
