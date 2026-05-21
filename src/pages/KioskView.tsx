@@ -104,6 +104,15 @@ export default function KioskView() {
         <div className="absolute bottom-0 left-0 w-64 h-64 rounded-full bg-purple-500/8 blur-3xl" />
       </div>
 
+      {/* Suite home link — small, top-right */}
+      <a
+        href="https://stem.zeroaitech.tech"
+        title="Back to STEM Suite"
+        className="absolute top-3 right-3 z-20 px-2 py-1 rounded-md border border-white/15 text-white/60 text-[11px] font-bold tracking-wide hover:text-white hover:border-white/40 transition-colors no-underline"
+      >
+        ← Suite
+      </a>
+
       {/* ── SECTION 1: School header ── */}
       <section className="kiosk-section-header">
         <div className="flex items-center justify-between px-8 pt-8">
