@@ -146,8 +146,6 @@ Licence management lives in the [ZeroAI Admin Console](https://admin.zeroaitech.
 | [zerospark](https://github.com/Lottie128/zerospark) | Visual circuit blocks |
 | [zaipy](https://github.com/Lottie128/zaipy) | Python IDE |
 
-See [CHANGELOG.md](CHANGELOG.md) for release notes.
-
 ---
 
 ## License
